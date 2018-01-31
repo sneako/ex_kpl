@@ -4,3 +4,9 @@ language: elixir
 
 elixir:
   - 1.6.0
+
+env:
+  - MIX_ENV=test
+
+script: mix coveralls.travis
+
