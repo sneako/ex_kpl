@@ -4,8 +4,8 @@ defmodule ExKpl.MixProject do
   def project do
     [
       app: :ex_kpl,
-      version: "0.1.0",
-      elixir: "~> 1.6",
+      version: "0.1.1",
+      elixir: "~> 1.4",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       test_coverage: [tool: ExCoveralls],
@@ -39,6 +39,7 @@ defmodule ExKpl.MixProject do
   defp package do
     [
       maintainers: ["Nico Piderman"],
+      files: ["lib", "priv", "mix.exs", "README", "LICENSE", "proto"],
       licenses: ["MIT"],
       links: %{"GitHub" => "https://github.com/sneako/ex_kpl"}
     ]

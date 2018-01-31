@@ -4,23 +4,11 @@ defmodule ExKpl do
 
   This is a port of the Erlang implementation of the KPL included in adroll/erlmld
 
-  Basic usage:
+  ## Basic usage:
 
       iex> {_, aggregator} = ExKpl.add(ExKpl.new(), {"partition_key", "data"})
       ...> ExKpl.finish(aggregator)
-      {{"partition_key",
-        <<243, 137, 154, 194, 10, 13, 112, 97, 114, 116, 105, 116, 105, 111, 110, 95, 107, 101, 121,
-        26, 8, 8, 0, 26, 4, 100, 97, 116, 97, 208, 54, 153, 218, 90, 34, 47, 163, 33, 8, 173, 27,
-        217, 85, 161, 78>>, :undefined},
-        %ExKpl{
-          agg_explicit_hash_key: :undefined,
-          agg_partition_key: :undefined,
-          agg_size_bytes: 0,
-          explicit_hash_keyset: %ExKpl.Keyset{key_to_index: %{}, rev_keys: []},
-          num_user_records: 0,
-          partition_keyset: %ExKpl.Keyset{key_to_index: %{}, rev_keys: []},
-          rev_records: []
-      }}
+      {{"partition_key", <<243, 137, 154, 194, 10, 13, 112, 97, 114, 116, 105, 116, 105, 111, 110, 95, 107, 101, 121, 26, 8, 8, 0, 26, 4, 100, 97, 116, 97, 208, 54, 153, 218, 90, 34, 47, 163, 33, 8, 173, 27, 217, 85, 161, 78>>, :undefined}, %ExKpl{agg_explicit_hash_key: :undefined, agg_partition_key: :undefined, agg_size_bytes: 0, explicit_hash_keyset: %ExKpl.Keyset{key_to_index: %{}, rev_keys: []}, num_user_records: 0, partition_keyset: %ExKpl.Keyset{key_to_index: %{}, rev_keys: []}, rev_records: []}}
 
   Typically you will use it like:
 
@@ -32,7 +20,6 @@ defmodule ExKpl do
           send_record_to_kinesis(full_record)
           aggregator
       end
-
 
   You can force the current records to be aggregated with `finish/1,2`
   """
@@ -62,8 +49,10 @@ defmodule ExKpl do
         }
 
   @type key :: binary()
-  @type user_record :: {key(), binary(), key()}
-  @type aggregated_record :: {key(), binary(), key()}
+  @type raw_data :: binary()
+  @type serialized_data :: binary()
+  @type user_record :: {key(), raw_data(), key()}
+  @type aggregated_record :: {key(), serialized_data(), key()}
 
   @magic <<243, 137, 154, 194>>
   @magic_deflated <<1, 137, 154, 194>>
@@ -102,7 +91,7 @@ defmodule ExKpl do
     add(agg, {partition_key, data, create_explicit_hash_key(partition_key)})
   end
 
-  @spec add(t(), {key(), binary(), key()}) :: {user_record() | :undefined, t()}
+  @spec add(t(), {key(), binary(), key()}) :: {aggregated_record() | :undefined, t()}
   def add(agg, {partition_key, data, explicit_hash_key}) do
     case {calc_record_size(agg, partition_key, data, explicit_hash_key), size_bytes(agg)} do
       {rec_size, _} when rec_size > @max_bytes_per_record ->
