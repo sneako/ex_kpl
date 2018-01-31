@@ -31,7 +31,8 @@ defmodule ExKpl.MixProject do
   defp deps do
     [
       {:exprotobuf, "~> 1.2"},
-      {:excoveralls, "~> 0.8.1", only: :test}
+      {:excoveralls, "~> 0.8.1", only: :test},
+      {:ex_doc, ">= 0.0.0", only: :dev}
     ]
   end
 
