@@ -17,6 +17,7 @@ defmodule ExKpl.MixProject do
       ],
       name: "ExKpl",
       source_url: "https://github.com/sneako/ex_kpl",
+      description: "Kinesis Producer Library in Elixir",
       package: package()
     ]
   end
