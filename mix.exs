@@ -14,22 +14,31 @@ defmodule ExKpl.MixProject do
         "coveralls.detail": :test,
         "coveralls.post": :test,
         "coveralls.html": :test
-      ]
+      ],
+      name: "ExKpl",
+      source_url: "https://github.com/sneako/ex_kpl",
+      package: package()
     ]
   end
 
-  # Run "mix help compile.app" to learn about applications.
   def application do
     [
       extra_applications: [:logger]
     ]
   end
 
-  # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
       {:exprotobuf, "~> 1.2"},
       {:excoveralls, "~> 0.8.1", only: :test}
+    ]
+  end
+
+  defp package do
+    [
+      maintainers: ["Nico Piderman"],
+      licenses: ["MIT"],
+      links: %{"GitHub" => "https://github.com/sneako/ex_kpl"}
     ]
   end
 end
