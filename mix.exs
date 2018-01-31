@@ -39,7 +39,7 @@ defmodule ExKpl.MixProject do
   defp package do
     [
       maintainers: ["Nico Piderman"],
-      files: ["lib", "priv", "mix.exs", "README", "LICENSE", "proto"],
+      files: ["lib", "priv", "mix.exs", "README*", "LICENSE*", "proto"],
       licenses: ["MIT"],
       links: %{"GitHub" => "https://github.com/sneako/ex_kpl"}
     ]
