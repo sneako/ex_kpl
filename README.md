@@ -2,15 +2,18 @@
 
 [Kinesis Producer Library](https://docs.aws.amazon.com/streams/latest/dev/developing-producers-with-kpl.html) in Elixir
 
+## Documentation
+Available on [hex](https://hexdocs.pm/ex_kpl/api-reference.html)
+
 ## Installation
 
-If [available in Hex](https://hex.pm/docs/publish), the package can be installed
+The package can be installed
 by adding `ex_kpl` to your list of dependencies in `mix.exs`:
 
 ```elixir
 def deps do
   [
-    {:ex_kpl, "~> 0.1.0"}
+    {:ex_kpl, "~> 0.1.1"}
   ]
 end
 ```
