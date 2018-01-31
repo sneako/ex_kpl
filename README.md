@@ -5,7 +5,7 @@
 ## Installation
 
 If [available in Hex](https://hex.pm/docs/publish), the package can be installed
-by adding `exkpl` to your list of dependencies in `mix.exs`:
+by adding `ex_kpl` to your list of dependencies in `mix.exs`:
 
 ```elixir
 def deps do
