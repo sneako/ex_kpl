@@ -3,6 +3,8 @@
 [Kinesis Producer Library](https://docs.aws.amazon.com/streams/latest/dev/developing-producers-with-kpl.html) in Elixir
 
 ## Documentation
+This module just provides record aggregation similar to Amazon's KPL library.
+Once the records are aggregated you can use your preferred method of sending them to Kinesis.
 Available on [hex](https://hexdocs.pm/ex_kpl/api-reference.html)
 
 ## Installation
