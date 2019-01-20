@@ -1,8 +1,8 @@
 defmodule ExKpl do
   @moduledoc """
-  Elixir implementation of the Kinesis Producer Library
+  Elixir implementation of the Kinesis Producer Library record aggregator.
 
-  This is a port of the Erlang implementation of the KPL included in adroll/erlmld
+  This is a port of the Erlang implementation included in [adroll/erlmld](https://github.com/AdRoll/erlmld)
 
   ## Basic usage:
 
@@ -16,7 +16,7 @@ defmodule ExKpl do
         {:undefined, aggregator} ->
           aggregator
 
-        {full_record, aggregator}
+        {full_record, aggregator} ->
           send_record_to_kinesis(full_record)
           aggregator
       end
