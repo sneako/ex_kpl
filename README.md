@@ -15,7 +15,7 @@ by adding `ex_kpl` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:ex_kpl, "~> 0.1.1"}
+    {:ex_kpl, "~> 0.1"}
   ]
 end
 ```
