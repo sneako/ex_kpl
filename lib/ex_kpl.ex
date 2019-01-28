@@ -45,10 +45,10 @@ defmodule ExKpl do
           agg_explicit_hash_key: :undefined | binary(),
           partition_keyset: Keyset.t(),
           explicit_hash_keyset: Keyset.t(),
-          rev_records: [Proto.Record.t()]
+          rev_records: [binary()]
         }
 
-  @type key :: binary()
+  @type key :: binary() | :undefined
   @type raw_data :: binary()
   @type serialized_data :: binary()
   @type user_record :: {key(), raw_data(), key()}
@@ -85,7 +85,8 @@ defmodule ExKpl do
 
   def finish(agg), do: finish(agg, false)
 
-  @spec add(t(), {key(), binary()} | {key(), binary(), key()}) :: {aggregated_record() | :undefined, t()}
+  @spec add(t(), {key(), binary()} | {key(), binary(), key()}) ::
+          {aggregated_record() | :undefined, t()}
   def add(agg, {partition_key, data}) do
     add(agg, {partition_key, data, create_explicit_hash_key(partition_key)})
   end
