@@ -25,6 +25,7 @@ defmodule ExKplTest do
     agg = ExKpl.new()
     {:undefined, agg} = ExKpl.add(agg, {"pk1", "data1", "ehk1"})
     {:undefined, agg} = ExKpl.add(agg, {"pk2", "data2", "ehk2"})
+    assert agg.num_user_records == 2
     {aggregated_record, agg} = ExKpl.finish(agg)
     assert 0 == ExKpl.count(agg)
     expected_pk = "pk1"
@@ -95,6 +96,16 @@ defmodule ExKplTest do
     assert 99 <= total_size / @max_bytes_per_record * 100
   end
 
+  test "max record size is configurable" do
+    data = String.duplicate("X", 500)
+    agg = ExKpl.new(max_bytes_per_record: 520)
+
+    assert {:undefined, agg} = ExKpl.add(agg, {"pk", data, "ehk"})
+    assert {{_pk, _agg_record_1, _}, agg} = ExKpl.add(agg, {"pk", data, "ehk"})
+    assert {{_pk, _agg_record_2, _}, agg} = ExKpl.add(agg, {"pk", data, "ehk"})
+    assert {{_pk, _agg_record_3, _}, agg} = ExKpl.finish(agg)
+  end
+
   test "deflate" do
     agg = ExKpl.new()
     {:undefined, agg} = ExKpl.add(agg, {"pk1", "data1", "ehk1"})
@@ -114,7 +125,7 @@ defmodule ExKplTest do
   test "record that is too large" do
     too_big = String.duplicate("A", @max_bytes_per_record + 1)
     agg = ExKpl.new()
-    assert :ok = ExKpl.add(agg, {"pk1", too_big, "ehk1"})
+    assert {:undefined, ^agg} = ExKpl.add(agg, {"pk1", too_big, "ehk1"})
   end
 
   defp fill({:undefined, agg}) do

@@ -30,13 +30,26 @@ defmodule ExKpl do
 
   require Logger
 
+  @type key :: binary() | :undefined
+  @type raw_data :: binary()
+  @type serialized_data :: binary()
+  @type user_record :: {key(), raw_data(), key()}
+  @type aggregated_record :: {key(), serialized_data(), key()}
+  @type new_opts :: [{:max_bytes_per_record, pos_integer()}]
+
+  @magic <<243, 137, 154, 194>>
+  @magic_deflated <<244, 137, 154, 194>>
+  @max_bytes_per_record bsl(1, 20)
+  @md5_digest_bytes 16
+
   defstruct num_user_records: 0,
             agg_size_bytes: 0,
             agg_partition_key: :undefined,
             agg_explicit_hash_key: :undefined,
             partition_keyset: %Keyset{},
             explicit_hash_keyset: %Keyset{},
-            rev_records: []
+            rev_records: [],
+            max_bytes_per_record: @max_bytes_per_record
 
   @type t :: %__MODULE__{
           num_user_records: non_neg_integer(),
@@ -45,23 +58,18 @@ defmodule ExKpl do
           agg_explicit_hash_key: :undefined | binary(),
           partition_keyset: Keyset.t(),
           explicit_hash_keyset: Keyset.t(),
-          rev_records: [binary()]
+          rev_records: [binary()],
+          max_bytes_per_record: pos_integer()
         }
 
-  @type key :: binary() | :undefined
-  @type raw_data :: binary()
-  @type serialized_data :: binary()
-  @type user_record :: {key(), raw_data(), key()}
-  @type aggregated_record :: {key(), serialized_data(), key()}
+  @spec new(new_opts()) :: t()
+  def new(opts \\ []) do
+    max = Keyword.get(opts, :max_bytes_per_record, @max_bytes_per_record)
 
-  # uses a non-standard magic prefix to prevent the KCL from deaggregating the record automatically
-  @magic <<243, 137, 154, 194>>
-  @magic_deflated <<244, 137, 154, 194>>
-  @max_bytes_per_record bsl(1, 20)
-  @md5_digest_bytes 16
-
-  @spec new() :: t()
-  def new(), do: %__MODULE__{}
+    %__MODULE__{
+      max_bytes_per_record: min(max, @max_bytes_per_record)
+    }
+  end
 
   @spec count(t()) :: non_neg_integer()
   def count(%__MODULE__{num_user_records: count}), do: count
@@ -80,7 +88,7 @@ defmodule ExKpl do
         should_deflate?
       ) do
     agg_record = {agg_pk, serialize_data(agg, should_deflate?), agg_ehk}
-    {agg_record, new()}
+    {agg_record, new(max_bytes_per_record: agg.max_bytes_per_record)}
   end
 
   def finish(agg), do: finish(agg, false)
@@ -91,12 +99,13 @@ defmodule ExKpl do
     add(agg, {partition_key, data, create_explicit_hash_key(partition_key)})
   end
 
-  def add(agg, {partition_key, data, explicit_hash_key}) do
+  def add(%{max_bytes_per_record: max} = agg, {partition_key, data, explicit_hash_key}) do
     case {calc_record_size(agg, partition_key, data, explicit_hash_key), size_bytes(agg)} do
-      {rec_size, _} when rec_size > @max_bytes_per_record ->
+      {rec_size, _} when rec_size > max ->
         Logger.error(fn -> "input record too large to fit in a single Kinesis record" end)
+        {:undefined, agg}
 
-      {rec_size, cur_size} when rec_size + cur_size > @max_bytes_per_record ->
+      {rec_size, cur_size} when rec_size + cur_size > max ->
         {full_record, agg1} = finish(agg)
         agg2 = add_record(agg1, partition_key, data, explicit_hash_key, rec_size)
         {full_record, agg2}
@@ -105,7 +114,7 @@ defmodule ExKpl do
         agg1 = add_record(agg, partition_key, data, explicit_hash_key, rec_size)
 
         # FIXME make size calculations more accurate
-        case size_bytes(agg1) > @max_bytes_per_record - 64 do
+        case size_bytes(agg1) > max - 64 do
           true ->
             {full_record, agg2} = finish(agg)
             agg3 = add_record(agg2, partition_key, data, explicit_hash_key, rec_size)
@@ -138,7 +147,8 @@ defmodule ExKpl do
            num_user_records: num_user_records,
            agg_size_bytes: agg_size,
            agg_partition_key: agg_pk,
-           agg_explicit_hash_key: agg_ehk
+           agg_explicit_hash_key: agg_ehk,
+           max_bytes_per_record: max_bytes_per_record
          },
          partition_key,
          data,
@@ -162,7 +172,8 @@ defmodule ExKpl do
       num_user_records: 1 + num_user_records,
       agg_size_bytes: new_record_size + agg_size,
       agg_partition_key: first_defined(agg_pk, partition_key),
-      agg_explicit_hash_key: first_defined(agg_ehk, explicit_hash_key)
+      agg_explicit_hash_key: first_defined(agg_ehk, explicit_hash_key),
+      max_bytes_per_record: max_bytes_per_record
     }
   end
 
