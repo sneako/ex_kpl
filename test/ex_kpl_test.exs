@@ -18,13 +18,13 @@ defmodule ExKplTest do
 
     assert 0 == ExKpl.count(agg)
     assert 16 + 4 == size
-    assert {:undefined, %ExKpl{}} = ExKpl.finish(agg)
+    assert {nil, %ExKpl{}} = ExKpl.finish(agg)
   end
 
   test "basic aggregation example" do
     agg = ExKpl.new()
-    {:undefined, agg} = ExKpl.add(agg, {"pk1", "data1", "ehk1"})
-    {:undefined, agg} = ExKpl.add(agg, {"pk2", "data2", "ehk2"})
+    {nil, agg} = ExKpl.add(agg, {"pk1", "data1", "ehk1"})
+    {nil, agg} = ExKpl.add(agg, {"pk2", "data2", "ehk2"})
     assert agg.num_user_records == 2
     {aggregated_record, agg} = ExKpl.finish(agg)
     assert 0 == ExKpl.count(agg)
@@ -72,9 +72,9 @@ defmodule ExKplTest do
     data3 = String.duplicate("Z", 200_000)
 
     agg = ExKpl.new()
-    {:undefined, agg} = ExKpl.add(agg, {"pk1", data1, "ehk1"})
+    {nil, agg} = ExKpl.add(agg, {"pk1", data1, "ehk1"})
     {{agg_pk1, agg_data1, agg_ehk1}, agg} = ExKpl.add(agg, {"pk2", data2, "ehk2"})
-    {:undefined, agg} = ExKpl.add(agg, {"pk3", data3, "ehk3"})
+    {nil, agg} = ExKpl.add(agg, {"pk3", data3, "ehk3"})
     {{agg_pk2, agg_data2, agg_ehk2}, _agg} = ExKpl.finish(agg)
 
     checksum1 = <<198, 6, 88, 216, 8, 244, 159, 59, 223, 14, 247, 208, 138, 137, 64, 118>>
@@ -90,7 +90,7 @@ defmodule ExKplTest do
   end
 
   test "full record" do
-    {pk, data, _} = fill({:undefined, ExKpl.new()})
+    {pk, data, _} = fill({nil, ExKpl.new()})
     total_size = byte_size(pk) + byte_size(data)
     assert total_size <= @max_bytes_per_record
     assert 99 <= total_size / @max_bytes_per_record * 100
@@ -100,15 +100,15 @@ defmodule ExKplTest do
     data = String.duplicate("X", 500)
     agg = ExKpl.new(max_bytes_per_record: 520)
 
-    assert {:undefined, agg} = ExKpl.add(agg, {"pk", data, "ehk"})
+    assert {nil, agg} = ExKpl.add(agg, {"pk", data, "ehk"})
     assert {{_pk, _agg_record_1, _}, agg} = ExKpl.add(agg, {"pk", data, "ehk"})
     assert {{_pk, _agg_record_2, _}, agg} = ExKpl.add(agg, {"pk", data, "ehk"})
-    assert {{_pk, _agg_record_3, _}, agg} = ExKpl.finish(agg)
+    assert {{_pk, _agg_record_3, _}, _agg} = ExKpl.finish(agg)
   end
 
   test "deflate" do
     agg = ExKpl.new()
-    {:undefined, agg} = ExKpl.add(agg, {"pk1", "data1", "ehk1"})
+    {nil, agg} = ExKpl.add(agg, {"pk1", "data1", "ehk1"})
     {{_, data_with_magic, _}, _} = ExKpl.finish(agg, true)
     <<magic::binary-size(4), data::binary()>> = data_with_magic
     assert ^magic = @magic_deflated
@@ -117,7 +117,10 @@ defmodule ExKplTest do
     proto = String.slice(inflated, 0, data_length - 16)
     checksum = String.slice(inflated, data_length - 16, data_length)
     assert ^checksum = :crypto.hash(:md5, proto)
-    %ExKpl.Proto.AggregatedRecord{records: [record]} = ExKpl.Proto.AggregatedRecord.decode(proto)
+
+    {:ok, %ExKpl.Proto.AggregatedRecord{records: [record]}} =
+      ExKpl.Proto.AggregatedRecord.decode(proto)
+
     %ExKpl.Proto.Record{data: data} = record
     assert "data1" = data
   end
@@ -125,10 +128,10 @@ defmodule ExKplTest do
   test "record that is too large" do
     too_big = String.duplicate("A", @max_bytes_per_record + 1)
     agg = ExKpl.new()
-    assert {:undefined, ^agg} = ExKpl.add(agg, {"pk1", too_big, "ehk1"})
+    assert {nil, ^agg} = ExKpl.add(agg, {"pk1", too_big, "ehk1"})
   end
 
-  defp fill({:undefined, agg}) do
+  defp fill({nil, agg}) do
     pk = Integer.to_string(:rand.uniform(1_000))
 
     data =
@@ -137,7 +140,7 @@ defmodule ExKplTest do
       |> String.duplicate(10)
 
     case ExKpl.add(agg, {pk, data}) do
-      {:undefined, agg} -> fill({:undefined, agg})
+      {nil, agg} -> fill({nil, agg})
       {full, _} -> full
     end
   end
@@ -148,7 +151,7 @@ defmodule ExKplTest do
     {agg_records, agg} = ExKpl.add_all(ExKpl.new(), records)
 
     case ExKpl.finish(agg) do
-      {:undefined, _} -> agg_records
+      {nil, _} -> agg_records
       {last_agg_record, _} -> agg_records ++ [last_agg_record]
     end
   end

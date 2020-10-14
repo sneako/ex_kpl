@@ -4,7 +4,7 @@ defmodule ExKpl.MixProject do
   def project do
     [
       app: :ex_kpl,
-      version: "0.1.5",
+      version: "0.2.0",
       elixir: "~> 1.4",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
@@ -30,9 +30,10 @@ defmodule ExKpl.MixProject do
 
   defp deps do
     [
-      {:exprotobuf, "~> 1.2"},
-      {:dialyxir, "~> 0.5", only: :dev, runtime: false},
-      {:excoveralls, "~> 0.8.1", only: :test},
+      {:protox, "~> 1.1"},
+      {:benchee, "~> 1.0", only: :dev},
+      {:dialyxir, "~> 1.0", only: [:test, :dev], runtime: false},
+      {:excoveralls, "~> 0.13.2", only: :test},
       {:ex_doc, ">= 0.0.0", only: :dev}
     ]
   end

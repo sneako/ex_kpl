@@ -1,4 +1,7 @@
 // From https://github.com/awslabs/amazon-kinesis-producer/blob/master/aggregation-format.md
+syntax = "proto2";
+
+package ExKpl.Proto;
 
 message AggregatedRecord {
   repeated string partition_key_table     = 1;

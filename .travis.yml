@@ -1,24 +1,32 @@
-sudo: false
-
 language: elixir
-
-elixir:
-  - 1.4.5
-  - 1.5.3
-  - 1.6.0
-
-otp_release:
-  - 18.3
-  - 19.3
-  - 20.2
-
 matrix:
-  exclude:
-    - elixir: 1.6.0
-      otp_release: 18.3
-
+  include:
+    - elixir: 1.7
+      otp_release: 22.0
+    - elixir: 1.8
+      otp_release: 22.0
+    - elixir: 1.9
+      otp_release: 22.0
+    - elixir: 1.10
+      otp_release: 22.0
+    - elixir: 1.10
+      otp_release: 23.0
+      script:
+        - mix format --check-formatted
+        - mix dialyzer
+        - mix coveralls.travis
+        - MIX_ENV=prod mix compile --warnings-as-errors
+before_script:
+  - wget https://github.com/protocolbuffers/protobuf/releases/download/v3.13.0/protoc-3.13.0-linux-x86_64.zip
+  - unzip -d protoc protoc-3.13.0-linux-x86_64.zip
+  - export PATH=$PWD/protoc/bin/:$PATH
 env:
   - MIX_ENV=test
-
-script: mix coveralls.travis
-
+script:
+  - mix dialyzer
+  - mix coveralls.travis
+after_script:
+  - MIX_ENV=docs mix deps.get
+cache:
+  directories:
+    - priv/plts

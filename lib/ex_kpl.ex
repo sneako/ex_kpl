@@ -8,12 +8,12 @@ defmodule ExKpl do
 
       iex> {_, aggregator} = ExKpl.add(ExKpl.new(), {"partition_key", "data"})
       ...> ExKpl.finish(aggregator)
-      {{"partition_key", <<243, 137, 154, 194, 10, 13, 112, 97, 114, 116, 105, 116, 105, 111, 110, 95, 107, 101, 121, 26, 8, 8, 0, 26, 4, 100, 97, 116, 97, 208, 54, 153, 218, 90, 34, 47, 163, 33, 8, 173, 27, 217, 85, 161, 78>>, :undefined}, %ExKpl{agg_explicit_hash_key: :undefined, agg_partition_key: :undefined, agg_size_bytes: 0, explicit_hash_keyset: %ExKpl.Keyset{key_to_index: %{}, rev_keys: []}, num_user_records: 0, partition_keyset: %ExKpl.Keyset{key_to_index: %{}, rev_keys: []}, rev_records: []}}
+      {{"partition_key", <<243, 137, 154, 194, 10, 13, 112, 97, 114, 116, 105, 116, 105, 111, 110, 95, 107, 101, 121, 26, 8, 8, 0, 26, 4, 100, 97, 116, 97, 208, 54, 153, 218, 90, 34, 47, 163, 33, 8, 173, 27, 217, 85, 161, 78>>, nil}, %ExKpl{agg_explicit_hash_key: nil, agg_partition_key: nil, agg_size_bytes: 0, explicit_hash_keyset: %ExKpl.Keyset{key_to_index: %{}, rev_keys: []}, num_user_records: 0, partition_keyset: %ExKpl.Keyset{key_to_index: %{}, rev_keys: []}, rev_records: []}}
 
   Typically you will use it like:
 
       case ExKpl.add(aggregator, {partition_key, data}) do
-        {:undefined, aggregator} ->
+        {nil, aggregator} ->
           aggregator
 
         {full_record, aggregator} ->
@@ -30,7 +30,7 @@ defmodule ExKpl do
 
   require Logger
 
-  @type key :: binary() | :undefined
+  @type key :: binary() | nil
   @type raw_data :: binary()
   @type serialized_data :: binary()
   @type user_record :: {key(), raw_data(), key()}
@@ -41,11 +41,15 @@ defmodule ExKpl do
   @magic_deflated <<244, 137, 154, 194>>
   @max_bytes_per_record bsl(1, 20)
   @md5_digest_bytes 16
+  @empty_record_size %Proto.AggregatedRecord{}
+                     |> Protox.Encode.encode!()
+                     |> IO.iodata_to_binary()
+                     |> byte_size()
 
   defstruct num_user_records: 0,
             agg_size_bytes: 0,
-            agg_partition_key: :undefined,
-            agg_explicit_hash_key: :undefined,
+            agg_partition_key: nil,
+            agg_explicit_hash_key: nil,
             partition_keyset: %Keyset{},
             explicit_hash_keyset: %Keyset{},
             rev_records: [],
@@ -54,8 +58,8 @@ defmodule ExKpl do
   @type t :: %__MODULE__{
           num_user_records: non_neg_integer(),
           agg_size_bytes: non_neg_integer(),
-          agg_partition_key: :undefined | binary(),
-          agg_explicit_hash_key: :undefined | binary(),
+          agg_partition_key: key(),
+          agg_explicit_hash_key: key(),
           partition_keyset: Keyset.t(),
           explicit_hash_keyset: Keyset.t(),
           rev_records: [binary()],
@@ -76,12 +80,11 @@ defmodule ExKpl do
 
   @spec size_bytes(t()) :: non_neg_integer()
   def size_bytes(%__MODULE__{agg_size_bytes: size, agg_partition_key: pk}) do
-    byte_size(@magic) + size + pk_size(pk) + @md5_digest_bytes +
-      byte_size(Proto.AggregatedRecord.encode(Proto.AggregatedRecord.new()))
+    byte_size(@magic) + size + pk_size(pk) + @md5_digest_bytes + @empty_record_size
   end
 
-  @spec finish(t()) :: {aggregated_record() | :undefined, t()}
-  def finish(%__MODULE__{num_user_records: 0} = agg, _), do: {:undefined, agg}
+  @spec finish(t()) :: {aggregated_record() | nil, t()}
+  def finish(%__MODULE__{num_user_records: 0} = agg, _), do: {nil, agg}
 
   def finish(
         %__MODULE__{agg_partition_key: agg_pk, agg_explicit_hash_key: agg_ehk} = agg,
@@ -94,7 +97,7 @@ defmodule ExKpl do
   def finish(agg), do: finish(agg, false)
 
   @spec add(t(), {key(), binary()} | {key(), binary(), key()}) ::
-          {aggregated_record() | :undefined, t()}
+          {aggregated_record() | nil, t()}
   def add(agg, {partition_key, data}) do
     add(agg, {partition_key, data, create_explicit_hash_key(partition_key)})
   end
@@ -103,7 +106,7 @@ defmodule ExKpl do
     case {calc_record_size(agg, partition_key, data, explicit_hash_key), size_bytes(agg)} do
       {rec_size, _} when rec_size > max ->
         Logger.error(fn -> "input record too large to fit in a single Kinesis record" end)
-        {:undefined, agg}
+        {nil, agg}
 
       {rec_size, cur_size} when rec_size + cur_size > max ->
         {full_record, agg1} = finish(agg)
@@ -121,7 +124,7 @@ defmodule ExKpl do
             {full_record, agg3}
 
           false ->
-            {:undefined, agg1}
+            {nil, agg1}
         end
     end
   end
@@ -131,7 +134,7 @@ defmodule ExKpl do
     {rev_agg_records, new_agg} =
       List.foldl(records, {[], agg}, fn record, {rev_agg_records, agg} ->
         case add(agg, record) do
-          {:undefined, new_agg} -> {rev_agg_records, new_agg}
+          {nil, new_agg} -> {rev_agg_records, new_agg}
           {agg_record, new_agg} -> {[agg_record | rev_agg_records], new_agg}
         end
       end)
@@ -158,12 +161,11 @@ defmodule ExKpl do
     {pk_index, new_pk_set} = Keyset.get_or_add_key(partition_key, pkset)
     {ehk_index, new_ehk_set} = Keyset.get_or_add_key(explicit_hash_key, ehkset)
 
-    new_record =
-      Proto.Record.new(
-        partition_key_index: pk_index,
-        explicit_hash_key_index: ehk_index,
-        data: data
-      )
+    new_record = %Proto.Record{
+      partition_key_index: pk_index,
+      explicit_hash_key_index: ehk_index,
+      data: data
+    }
 
     %__MODULE__{
       partition_keyset: new_pk_set,
@@ -177,7 +179,7 @@ defmodule ExKpl do
     }
   end
 
-  defp first_defined(:undefined, second), do: second
+  defp first_defined(nil, second), do: second
   defp first_defined(first, _), do: first
 
   defp calc_record_size(
@@ -196,7 +198,7 @@ defmodule ExKpl do
 
     ehk_size =
       case explicit_hash_key do
-        :undefined ->
+        nil ->
           0
 
         _ ->
@@ -212,7 +214,7 @@ defmodule ExKpl do
 
     ehk_index_size =
       case explicit_hash_key do
-        :undefined -> 0
+        nil -> 0
         _ -> 1 + varint_size(Keyset.potential_index(explicit_hash_key, ehkset))
       end
 
@@ -241,7 +243,7 @@ defmodule ExKpl do
   # [1] https://github.com/awslabs/kinesis-aggregation/blob/db92620e435ad9924356cda7d096e3c888f0f72f/python/aws_kinesis_agg/aggregator.py#L447-L458
   # [2] https://github.com/awslabs/amazon-kinesis-producer/blob/ea1e49218e1a11f1b462662a1db4cc06ddad39bb/aws/kinesis/core/user_record.cc#L36-L45
   # FIXME: Implement the actual algorithm from KPL.
-  defp create_explicit_hash_key(_), do: :undefined
+  defp create_explicit_hash_key(_), do: nil
 
   defp serialize_data(
          %__MODULE__{
@@ -252,12 +254,13 @@ defmodule ExKpl do
          should_deflate?
        ) do
     serialized =
-      Proto.AggregatedRecord.new(
+      %Proto.AggregatedRecord{
         partition_key_table: Keyset.key_list(pkset),
         explicit_hash_key_table: Keyset.key_list(ehkset),
         records: Enum.reverse(records)
-      )
-      |> Proto.AggregatedRecord.encode()
+      }
+      |> Protox.Encode.encode!()
+      |> IO.iodata_to_binary()
 
     data = serialized <> :crypto.hash(:md5, serialized)
 
@@ -270,6 +273,6 @@ defmodule ExKpl do
     end
   end
 
-  defp pk_size(:undefined), do: 0
+  defp pk_size(nil), do: 0
   defp pk_size(pk), do: byte_size(pk)
 end
