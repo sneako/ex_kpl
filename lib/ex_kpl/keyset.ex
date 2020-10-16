@@ -11,8 +11,8 @@ defmodule ExKpl.Keyset do
   @spec key?(binary(), t()) :: boolean()
   def key?(key, %__MODULE__{key_to_index: key_to_index}), do: Map.has_key?(key_to_index, key)
 
-  @spec get_or_add_key(:undefined, t()) :: {:undefined, t()}
-  def get_or_add_key(:undefined, keyset), do: {:undefined, keyset}
+  @spec get_or_add_key(nil, t()) :: {nil, t()}
+  def get_or_add_key(nil, keyset), do: {nil, keyset}
 
   @spec get_or_add_key(binary(), t()) :: {non_neg_integer(), t()}
   def get_or_add_key(key, %__MODULE__{rev_keys: rev_keys, key_to_index: key_to_index} = keyset) do
