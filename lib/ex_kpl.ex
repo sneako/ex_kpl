@@ -106,6 +106,11 @@ defmodule ExKpl do
     case {calc_record_size(agg, partition_key, data, explicit_hash_key), size_bytes(agg)} do
       {rec_size, _} when rec_size > max ->
         Logger.error(fn -> "input record too large to fit in a single Kinesis record" end)
+
+        :telemetry.execute([:ex_kpl, :add, :input_too_large], %{size: rec_size, max: max}, %{
+          record: data
+        })
+
         {nil, agg}
 
       {rec_size, cur_size} when rec_size + cur_size > max ->

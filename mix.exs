@@ -31,6 +31,7 @@ defmodule ExKpl.MixProject do
   defp deps do
     [
       {:protox, "~> 1.1"},
+      {:telemetry, "~> 0.4"},
       {:benchee, "~> 1.0", only: :dev},
       {:dialyxir, "~> 1.0", only: [:test, :dev], runtime: false},
       {:excoveralls, "~> 0.13.2", only: :test},
