@@ -20,8 +20,5 @@ def deps do
 end
 ```
 
-This library depends on [protox](https://github.com/ahamez/protox), which has a compile time dependency on Google's protoc (>= 3.0) to parse .proto files.
-It must be available in $PATH. You can install it with your favorite package manager (brew install protobuf, apt install protobuf-compiler, etc...).
-
 ## Credits
 This is basically a port of AdRoll's Erlang implementation included in [adroll/erlmld](https://github.com/AdRoll/erlmld), so a special thanks to them.

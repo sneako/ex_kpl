@@ -42,9 +42,8 @@ defmodule ExKpl do
   @max_bytes_per_record bsl(1, 20)
   @md5_digest_bytes 16
   @empty_record_size %Proto.AggregatedRecord{}
-                     |> Protox.Encode.encode!()
-                     |> IO.iodata_to_binary()
-                     |> byte_size()
+                     |> Protox.encode!()
+                     |> elem(1)
 
   defstruct num_user_records: 0,
             agg_size_bytes: 0,
@@ -253,15 +252,15 @@ defmodule ExKpl do
          },
          should_deflate?
        ) do
-    serialized =
+    {serialized_iodata, _byte_size} =
       %Proto.AggregatedRecord{
         partition_key_table: Keyset.key_list(pkset),
         explicit_hash_key_table: Keyset.key_list(ehkset),
         records: Enum.reverse(records)
       }
-      |> Protox.Encode.encode!()
-      |> IO.iodata_to_binary()
+      |> Protox.encode!()
 
+    serialized = IO.iodata_to_binary(serialized_iodata)
     data = serialized <> :crypto.hash(:md5, serialized)
 
     case should_deflate? do
